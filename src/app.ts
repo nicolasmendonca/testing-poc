@@ -1,12 +1,41 @@
 import express from 'express'
+import http from 'http'
+import { RequestContext } from './express'
 import { userRouter } from './router/userRouter'
 
-const app = express()
+export class App {
+  public express: express.Application
+  public server: http.Server;
+  public PORT = 80
 
-const PORT = 3000
+  constructor(services: RequestContext['services']) {
+    this.express = express()
+    this.server = http.createServer(this.express)
+    this.injectServices(services)
+    this.mountRoutes()
+  }
 
-app.use(userRouter)
+  private mountRoutes() {
+    return this.express.use('/', userRouter)
+  }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
-})
+  private injectServices(services: RequestContext['services']) {
+    this.express.use((req, _, next) => {
+      req.context = { services } 
+      return next()
+    })
+  }
+
+  startApp() {
+    return new Promise((resolve) => {
+      this.server.listen(this.PORT, () => {
+        console.log(`Server is listening on port ${this.PORT}`)
+        return resolve(undefined)
+      })
+    })
+  }
+
+  stopApp() {
+    this.server.close()
+  }
+}
